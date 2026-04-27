@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>AS-11 DPP Metadata Tool</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    h2 { margin-top: 30px; }
+    .field { margin-bottom: 10px; }
+    label { display: block; font-weight: bold; }
+    input, textarea {
+      width: 100%;
+      padding: 6px;
+      margin-top: 3px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>AS-11 Metadata Editor</h1>
+
+<input type="file" id="fileInput" accept=".dpt,.xml">
+
+<div id="form"></div>
+
+<button onclick="exportXML()">Export .dpt</button>
+
+<script>
+let xmlDoc;
+let fields = [];
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        const parser = new DOMParser();
+        xmlDoc = parser.parseFromString(event.target.result, "text/xml");
+
+        generateForm();
+    };
+
+    reader.readAsText(file);
+});
+
+function generateForm() {
+    const container = document.getElementById('form');
+    container.innerHTML = '';
+
+    fields = [];
+
+    function walk(node, path = '') {
+        if (node.children.length === 0 && node.textContent.trim() !== '') {
+            const fieldId = path + node.nodeName;
+
+            fields.push({ node, fieldId });
+
+            const div = document.createElement('div');
+            div.className = 'field';
+
+            const label = document.createElement('label');
+            label.innerText = node.nodeName;
+
+            const input = document.createElement('input');
+            input.value = node.textContent;
+            input.id = fieldId;
+
+            div.appendChild(label);
+            div.appendChild(input);
+
+            container.appendChild(div);
+        }
+
+        for (let child of node.children) {
+            walk(child, path + node.nodeName + '_');
+        }
+    }
+
+    walk(xmlDoc.documentElement);
+}
+
+function exportXML() {
+    fields.forEach(f => {
+        const value = document.getElementById(f.fieldId).value;
+        f.node.textContent = value;
+    });
+
+    const serializer = new XMLSerializer();
+    const xmlString = serializer.serializeToString(xmlDoc);
+
+    const blob = new Blob([xmlString], { type: "application/xml" });
+    const a = document.createElement('a');
+
+    a.href = URL.createObjectURL(blob);
+    a.download = "output.dpt";
+    a.click();
+}
+</script>
+
+</body>
+</html>
